@@ -2,7 +2,7 @@
 
 A browser front-end for the **Roland VS-880** (V-Xpanded, with the VS8F-1 effect board). It makes the inside of the machine visible: both effects with every parameter on a knob, the full mixer with EQ and routing, and the song settings that usually hide behind menus and the jog wheel.
 
-**Use it:** open the page in Chrome or Edge (Safari has no Web MIDI). Everything runs in your browser; nothing is uploaded.
+**Use it:** [open VS-880 Control Room](https://harmonicworks.org/VS880-Control-Room/) in Chrome or Edge (Safari has no Web MIDI). Everything runs in your browser; nothing is uploaded.
 
 ## Status
 Personal project, built for my own studio and shared as-is under the MIT licence. Free to use, copy and change.
@@ -53,7 +53,7 @@ Good to know:
 - The **untidymusic VS880 Ctrlr panel**, whose messages were the first map into the VS-880
 - Roland's VS-880, VS-880EX and VS8F-1 manuals for parameter names and ranges
 
-## How this was made
-Built over one long day and evening with Claude (Anthropic's AI), which did most of the reverse-engineering and coding from dumps and captures I made on my own VS-880. Tested on real hardware.
+## Credits
+Made by **Maurice Hissink** (harmonicworks): idea, design and testing on my own VS-880, with **Claude** (Anthropic's AI) doing most of the reverse-engineering and coding from dumps and captures I made. Built over one long day and evening.
 
 MIT licence.
