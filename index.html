@@ -1,0 +1,825 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VS-880 Control Room</title>
+<style>
+:root{
+  --bg:#141518;--case:#1d1f23;--panel:#24272c;--line:#363a41;--ink:#e8e5dd;--dim:#9b978d;
+  --acc:#e0a33a;--acc2:#5fb3a8;--lcd:#9fd36b;--lcdbg:#16210f;--bad:#d9634c;
+  --mono:ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}
+button,select,input{font:inherit;color:var(--ink);background:#121417;border:1px solid var(--line);border-radius:4px;padding:4px 8px}
+button{cursor:pointer;background:#2b2f35}
+button:hover{border-color:var(--acc)}
+button.on{background:var(--acc);color:#141518;border-color:var(--acc)}
+button.small{padding:1px 6px;font-size:11px}
+header{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding:12px 18px;border-bottom:1px solid var(--line);background:var(--case)}
+header h1{margin:0;font-size:17px;letter-spacing:.06em}
+header h1 small{color:var(--dim);font-weight:400;letter-spacing:0;margin-left:6px}
+#status{font-size:12px;color:var(--dim)}
+#status.ok{color:var(--lcd)}
+.spacer{flex:1}
+label{display:inline-flex;gap:6px;align-items:center;font-size:12px;color:var(--dim)}
+.wrap{padding:14px 18px;display:flex;flex-direction:column;gap:14px}
+details.box{background:var(--panel);border:1px solid var(--line);border-radius:6px}
+details.box>summary{cursor:pointer;padding:9px 14px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--acc);list-style:none}
+details.box>summary::-webkit-details-marker{display:none}
+details.box>summary::before{content:"▸ ";color:var(--dim)}
+details.box[open]>summary::before{content:"▾ "}
+.boxin{padding:0 14px 12px}
+.row{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin-bottom:8px}
+.note{font-size:12px;color:var(--dim);margin:4px 0}
+.fxgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,560px),1fr));gap:14px}
+.fx{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.fxhead{display:flex;gap:12px;align-items:stretch;flex-wrap:wrap;margin-bottom:10px}
+.fxtag{font-weight:700;font-size:13px;letter-spacing:.1em;color:var(--acc);writing-mode:vertical-rl;transform:rotate(180deg);text-align:center;padding:2px 0}
+.lcd{flex:1;min-width:220px;background:var(--lcdbg);border:1px solid #2c3a22;border-radius:4px;padding:6px 10px;font-family:var(--mono);color:var(--lcd);box-shadow:inset 0 0 12px #0008}
+.lcd .l1{font-size:11px;opacity:.75;display:flex;justify-content:space-between;gap:8px}
+.lcd .l2{font-size:20px;letter-spacing:.08em;white-space:pre}
+.tools{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}
+.tools select{max-width:210px}
+.tools input.name{width:9.5em;font-family:var(--mono)}
+.group{border-top:1px solid var(--line);padding-top:8px;margin-top:8px}
+.group h3{margin:0 0 6px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:600}
+.knobs{display:flex;flex-wrap:wrap;gap:6px}
+.knob{width:84px;display:flex;flex-direction:column;align-items:center;padding:4px 2px 5px;border-radius:6px;border:1px solid transparent;position:relative}
+.knob.learning{border-color:var(--acc);background:#e0a33a18}
+.knob.mapped .klabel::after{content:" ●";color:var(--acc2);font-size:9px}
+.knob svg{width:52px;height:52px;cursor:ns-resize;touch-action:none;outline:none}
+.knob svg:focus .ring{stroke:var(--acc)}
+.klabel{font-size:11px;text-align:center;line-height:1.15;min-height:2.3em;color:var(--ink);outline:none}
+.klabel[contenteditable=true]{border-bottom:1px dashed var(--line)}
+.kval{font-family:var(--mono);font-size:12px;color:var(--lcd)}
+.kbtns{display:flex;gap:3px;margin-top:3px}
+.kbtns button{padding:0 5px;font-size:10px;line-height:16px}
+.kset{position:absolute;z-index:5;top:100%;left:50%;transform:translateX(-50%);background:#101215;border:1px solid var(--acc);border-radius:6px;padding:8px;width:180px;font-size:12px;display:flex;flex-direction:column;gap:6px}
+.kset input{width:5em}
+.toggle{display:inline-flex;align-items:center;gap:4px}
+.sw{display:flex;flex-wrap:wrap;gap:6px}
+.sw button{min-width:76px}
+.morph{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.morph input[type=range]{width:140px;accent-color:var(--acc)}
+.unk{color:var(--dim);font-size:11px}
+#log{font-family:var(--mono);font-size:11px;background:#0e1012;border:1px solid var(--line);border-radius:4px;padding:6px;height:200px;overflow:auto;white-space:pre-wrap;word-break:break-all}
+#log .in{color:var(--lcd)} #log .out{color:var(--acc)} #log .err{color:var(--bad)}
+.hex{font-family:var(--mono);font-size:11px;white-space:pre;overflow:auto;background:#0e1012;border:1px solid var(--line);border-radius:4px;padding:6px}
+input.hx{width:3.2em;font-family:var(--mono);text-transform:uppercase}
+
+.strips{display:grid;grid-template-columns:repeat(9,minmax(84px,1fr));gap:6px;overflow-x:auto}
+.strip{background:#1a1c20;border:1px solid var(--line);border-radius:6px;padding:6px;display:flex;flex-direction:column;gap:5px;align-items:stretch;font-size:11px;min-width:84px}
+.strip h4{margin:0;text-align:center;font-size:12px;color:var(--acc);letter-spacing:.06em}
+.strip select{font-size:11px;padding:2px 3px;width:100%}
+.strip .lbl{color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.06em}
+.strip input[type=range]{accent-color:var(--acc);width:100%}
+.strip .fader{writing-mode:vertical-lr;direction:rtl;height:130px;width:100%;margin:2px 0}
+.strip .v{font-family:var(--mono);color:var(--lcd);text-align:center;font-size:11px}
+.strip .kr{display:flex;justify-content:space-around;gap:2px}
+.mk{display:flex;flex-direction:column;align-items:center;width:42px}
+.mk svg{width:30px;height:30px;cursor:ns-resize;touch-action:none}
+.mk .mkv{font-family:var(--mono);font-size:9.5px;color:var(--lcd);white-space:nowrap}
+.mk .mkl{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.04em}
+.mk.off{opacity:.3}
+.strip.master{border-color:#5a4a2a}
+.status-1{background:#1f3a1c!important}.status-2{background:#4a1c1c!important}.status-0{background:#4a3a14!important}
+#hoodOut table{border-collapse:collapse;font-size:12px;margin-top:6px}
+#hoodOut td,#hoodOut th{border-bottom:1px solid var(--line);padding:3px 10px;text-align:left}
+#hoodOut th{color:var(--dim);font-weight:500}
+#hoodOut tr.cur td{color:var(--lcd)}
+.diff{font-family:var(--mono);font-size:11px;white-space:pre;background:#0e1012;border:1px solid var(--line);border-radius:4px;padding:6px;max-height:180px;overflow:auto}
+
+footer{padding:8px 18px 20px;color:var(--dim);font-size:11px}
+</style>
+</head>
+<body>
+<header>
+  <h1>VS-880 Control Room <small>v0.9</small></h1>
+  <span id="status">MIDI: not connected</span>
+  <span class="spacer"></span>
+  <label class="toggle"><input type="checkbox" id="pickup" checked> knob pickup</label>
+  <label class="toggle"><input type="checkbox" id="labToggle"> lab tools</label>
+</header>
+
+<div class="wrap">
+
+<details class="box" id="connBox" open>
+  <summary>Connections &amp; VS-880 setup</summary>
+  <div class="boxin">
+    <div class="row">
+      <label>VS-880 out <select id="outSel"></select></label>
+      <label>VS-880 in <select id="inSel"></select></label>
+      <label>Device ID <input id="devId" type="number" min="1" max="32" value="17" style="width:4em"></label>
+    </div>
+    <div class="row">
+      <label>Controller in <select id="ctlInSel"></select></label>
+      <label>Controller out (LEDs) <select id="ctlOutSel"></select></label>
+      <button id="rescan">Rescan</button>
+      <button id="readAll">Read FX1 + FX2</button>
+      <label class="toggle" title="Re-reads FX1/FX2 every 1.5 s so the editor follows edits made on the VS-880"><input type="checkbox" id="follow"> Follow machine</label>
+      <label title="How the editor asks for bank B and U (still being tested)">Bank select <select id="bankMode"><option value="cc32">CC 32 (works)</option><option value="both">CC 0 + CC 32</option><option value="cc0">CC 0</option></select></label>
+    </div>
+    <p class="note">VS-880: SYSTEM → MIDI PRM → MIDIThr=Out · SysEx.Rx=On · SysEx.Tx=On · CtrType=Excl · P.C.Eff=On · DeviceID 17.
+    nanoKONTROL2 LEDs only light from the computer when its LED Mode is set to <b>External</b> (Korg Kontrol Editor).</p>
+  </div>
+</details>
+
+<div class="fxgrid" id="fxgrid"></div>
+
+<details class="box" id="mixBox" open>
+  <summary>Mixer &amp; routing</summary>
+  <div class="boxin">
+    <div class="row"><button id="mixRead">Read mixer</button>
+      <label>Mixer mode <select id="mixMode"><option value="0">Input → Track</option><option value="1">Input Mix</option><option value="2">Track Mix</option></select></label>
+      <span class="note">Faders, pans, status and FX sends follow the VS-880 live. Hover a control to see what it is.</span></div>
+    <p class="note" id="mixNote" style="color:var(--acc)"></p>
+    <div class="strips" id="strips"></div>
+  </div>
+</details>
+
+<details class="box" id="hoodBox">
+  <summary>⚠ Under the hood — song &amp; system (read-only)</summary>
+  <div class="boxin">
+    <p class="note">Shows what the VS-880 reveals about the disk and the current song. Nothing here writes to the machine (yet).</p>
+    <div class="row"><button id="hoodRead">Read song data</button><span class="unk" id="hoodInfo"></span></div>
+    <div class="row"><label>Current song name <input id="songName" maxlength="12" style="width:10em;font-family:var(--mono)"></label>
+      <button id="songRename" title="Writes the 12-character name of the current song (01 00 06)">Rename song</button>
+      <label class="toggle" title="Song protect of the current song (01 00 14)"><input type="checkbox" id="songProt"> Protect</label>
+      <span class="unk">Use it from the VS-880's main screen. The new name is kept once you store the song (SHIFT + STORE).</span></div>
+    <div class="row">
+      <label>Tempo <input id="tempo" type="number" min="25" max="250" step="0.1" style="width:6em"> BPM</label><button id="tempoSet">Set</button>
+      <label>MTC type <select id="mtcType"><option value="0">24</option><option value="1">25</option><option value="2">29D</option><option value="3">29N</option><option value="4">30</option></select></label>
+    </div>
+    <div class="row" id="vtracks"></div>
+    <div id="hoodOut"></div>
+  </div>
+</details>
+
+
+<details class="box" id="labBox" hidden>
+  <summary>Lab tools</summary>
+  <div class="boxin">
+    <div class="row">
+      <label>Write address <input class="hx" id="la0" value="04"><input class="hx" id="la1" value="00"><input class="hx" id="la2" value="2A"></label>
+      <label>Value <input id="lval" type="number" value="100" style="width:6em"></label>
+      <button id="lsend">Send (2-byte)</button>
+      <button id="lsend1">Send (1-byte)</button>
+    </div>
+    <div class="row">
+      <label>Read <input class="hx" id="lr0" value="02"><input class="hx" id="lr1" value="00"><input class="hx" id="lr2" value="00"> size <input class="hx" id="lrs" value="80"></label>
+      <button id="lread">Request</button>
+      <button id="copyDumps">Copy FX dumps</button>
+      <button id="bankDl" title="Every patch read by “Read names” in this session, as one file — lets Ember map the other algorithms">Download bank dumps</button>
+      <button id="exportMaps">Export mappings &amp; labels</button>
+      <button id="clearLog">Clear log</button>
+      <label class="toggle"><input type="checkbox" id="hideClock" checked> hide clock/MTC</label>
+    </div>
+    <div class="row" style="border-top:1px solid var(--line);padding-top:8px">
+      <b style="font-size:12px;color:var(--acc)">Program Change test</b>
+      <label>Effect <select id="pcFx"><option value="0">FX1</option><option value="1">FX2</option></select></label>
+      <label>PC number (0–127) <input id="pcNum" type="number" min="0" max="127" value="100" style="width:5em"></label>
+      <button id="pcGo">Send + read back</button><span class="unk" id="pcInfo"></span>
+    </div>
+    <div class="row" style="border-top:1px solid var(--line);padding-top:8px">
+      <b style="font-size:12px;color:var(--acc)">Memory scan</b>
+      <label>1st byte <input class="hx" id="sc0a" value="00">–<input class="hx" id="sc0b" value="07"></label>
+      <label>2nd byte <input class="hx" id="sc1a" value="00">–<input class="hx" id="sc1b" value="0F"></label>
+      <label title="Skip through the 2nd byte in steps (hex), e.g. 10 = every 16th area">step <input class="hx" id="scStep" value="01"></label>
+      <label title="How many bytes to ask for per area (hex). Small sizes are sometimes accepted where 80 is refused">size <input class="hx" id="scSize" value="80"></label>
+      <label>look for <input id="scanText" value="EMBER" style="width:8em"></label>
+      <label>gap ms <input id="scanGap" type="number" value="180" style="width:4.5em"></label>
+      <label class="toggle"><input type="checkbox" id="scanZeros"> list empty areas</label>
+      <button id="scanGo">Scan</button><button id="scanDl">Download results</button>
+      <span class="unk" id="scanInfo">Read-only: only asks the VS-880 to show memory. Do it with the transport stopped.</span>
+    </div>
+    <div class="hex" id="scanOut" style="max-height:220px;margin-bottom:8px"></div>
+    <div class="row" style="border-top:1px solid var(--line);padding-top:8px">
+      <b style="font-size:12px;color:var(--acc)">Memory compare</b>
+      <button id="mixA">Snapshot A</button><button id="mixB">Snapshot B</button>
+      <span class="unk" id="mixDiffInfo">Song/system + mixer. A → change ONE thing on the VS-880 → B. Changed bytes are listed below.</span>
+    </div>
+    <div class="diff" id="mixDiff" style="margin-bottom:8px"></div>
+    <div id="log"></div>
+    <p class="note">FX memory as last read:</p>
+    <div class="hex" id="hexview"></div>
+  </div>
+</details>
+
+</div>
+<footer>VS-880 Control Room · a personal project, shared as-is (MIT) · built with Claude (Anthropic) on a real VS-880 V-Xpanded with VS8F-1 · first addresses from the untidymusic VS880 Ctrlr panel, parameter names from Roland's VS8F-1 Owner's Manual · nothing is stored on the VS-880 until you store it there yourself.</footer>
+
+<script>
+'use strict';
+/* ================= data ================= */
+const ALGOS=['Reverb','Delay','Stereo Delay Chorus','Stereo Pitch Shifter Delay','Vocoder','2ch RSS','Delay RSS','Chorus RSS','Guitar Multi 1','Guitar Multi 2','Guitar Multi 3','Vocal Multi','Rotary','Guitar Amp Simulator','Stereo Phaser','Stereo Flanger','Dual Compressor/Limiter','Gate Reverb','Multi Tap Delay','Stereo Multi'];
+const MANUAL_PAGE=[16,17,18,19,19,20,20,21,21,22,23,24,25,25,26,26,27,27,28,29];
+const PRESETS=['RV:LargeHall','RV:SmallHall','RV:Strings','RV:PianoHall','RV:Orch Room','RV:VocalRoom','RV:MediumRm','RV:LargeRoom','RV:CoolPlate','RV:Short Plt','RV:Vocal Plt','RV:Soft Amb.','RV:Room Amb.','RV:Cathedral','RV:Long Cave','RV:GarageDr.','RV:Rock Kick','RV:RockSnare','RV:BriteGate','RV:Fat Gate','RV:ReverseGt','RV:PanningGt','DL:Short Dly','DL:MediumDly','DL:LongDelay','DL:AnalogDly','DL:Tape Echo','DL:Karaoke','DL:Multi-Tap','DL:MltTapAmb','DL:Ping Pong','VO:Vocal Efx','VO:JazzVocal','VO:RockVocal','VO:Narration','VO:BigChorus','VO:Club DJ','VO:AM-Radio','VO:PlusTwo','VO:Robot Efx','VO:Bull Horn','GT:Rock Lead','GT:LA Lead','GT:MetalLead','GT:Metal Jet','GT:CleanRthm','GT:DIedClean','GT:Delay Rif','GT:Acoustic','GT:BluesDrv.','GT:Liverpool','GT:Country','GA:JazChorus','GA:CleanTwin','GA:Vin.Tweed','GA:BluesDrv.','GA:MatchLead','GA:StudioCmb','GA:JMP-Stack','GA:SLDN Lead','GA:5150 Lead',"BS:DI'edBass",'BS:MikedBass','BS:CompBass','BS:Auto Wah','BS:EFX Bass','CL:Comp','CL:Limiter','EQ:Loudness','EQ:Fat Dance','EQ:ThinJingl','CH:Lt Chorus','CH:Deep Cho','CH:DetuneCho','FL:LtFlanger','FL:Deep Fl','PH:Lt Phaser','PH:DeepPhase','PS:-4thVoice','PS:ShimmerUD','Reverb','Delay','StDly-Chorus','StPS-Delay','Vocoder','2ch RSS','Delay RSS','Chorus RSS','GuitarMulti1','GuitarMulti2','GuitarMulti3','Vocal Multi','Rotary','GuitarAmpSim','St Phaser','St Flanger','DualComp/Lim','Gate Reverb','MultiTapDly','Stereo Multi'];
+const PRESET_ALGO=(()=>{const a=[],put=(f,t,v)=>{for(let i=f;i<=t;i++)a[i]=v;};
+  put(1,18,0);put(19,22,17);put(23,26,1);put(27,29,2);put(30,31,18);put(32,38,11);put(39,40,3);put(41,41,10);put(42,43,9);put(44,46,8);put(47,47,11);put(48,48,9);put(49,49,11);put(50,52,10);put(53,61,13);put(62,62,11);put(63,63,13);put(64,64,19);put(65,65,9);put(66,66,2);put(67,71,19);put(72,73,2);put(74,74,3);put(75,76,15);put(77,78,14);put(79,79,11);put(80,80,3);for(let i=81;i<=100;i++)a[i]=i-81;return a;})();
+const FX1_ONLY=new Set([...Array(22)].map((_,i)=>i+1).concat([81,98]));
+
+/* units: [min,max,format] */
+const fHz=v=>v*10>=1000?(v/100).toFixed(v%10?2:1).replace(/\.?0+$/,'')+' kHz':(v*10)+' Hz';
+const U={
+  sw:[0,1,v=>v?'On':'Off'], type:[0,1,v=>v?'Peak':'Shelf'], enum:[0,3,v=>String(v)],
+  db12:[-12,12,v=>(v>0?'+':'')+v+' dB'], db36:[-36,0,v=>v+' dB'], dbc:[-60,12,v=>(v>0?'+':'')+v+' dB'],
+  lvl:[-100,100,v=>String(v)], pct:[0,100,v=>String(v)],
+  ms:[0,1200,v=>v+' ms'], sms:[-1200,1200,v=>(v<0?'L':v>0?'R':'')+Math.abs(v)+' ms'],
+  sec10:[1,320,v=>(v/10).toFixed(1)+' s'], hz10:[1,100,v=>(v/10).toFixed(1)+' Hz'],
+  f10:[2,800,fHz], k01:[10,200,v=>(v/10).toFixed(1)+' kHz'], q:[3,100,v=>(v/10).toFixed(1)],
+  semi:[-12,12,v=>(v>0?'+':'')+v+' st'], deg:[-180,180,v=>v+'°'], pan:[1,127,v=>v===64?'C':(v<64?'L':'R')+Math.abs(v-64)],
+  m:[5,40,v=>v+' m'], raw:[0,127,v=>String(v)]
+};
+const P=(name,off,unit,min,max,extra)=>({name,off,unit,min:min??U[unit][0],max:max??U[unit][1],...(extra||{})});
+const E=(name,off,opts)=>P(name,off,'enum',0,opts.length-1,{opts});
+const fmt=(p,v)=>p.opts?(p.opts[v]??String(v)):U[p.unit][2](v);
+const eqBlock=s=>[P('Low Type',s,'type'),P('Low Gain',s+2,'db12'),P('Low Freq',s+4,'f10',2,200),P('Low Q',s+6,'q'),
+  P('Mid Gain',s+8,'db12'),P('Mid Freq',s+10,'f10',20,800),P('Mid Q',s+12,'q'),P('High Type',s+14,'type'),
+  P('High Gain',s+16,'db12'),P('High Freq',s+18,'k01',14,200),P('High Q',s+20,'q'),P('EQ Out',s+22,'pct')];
+const SW=(names,start=0x0E)=>names.map((n,k)=>P(n,start+2*k,'sw'));
+const AMP_MODES=['Small','Built In','2 Stack','3 Stack'];
+const guitarMulti=drive=>({switches:SW(['Comp',drive,'Noise Sup','Wah','Amp','Flanger','Delay']),groups:[
+  ['Compressor',[P('Attack',0x1C,'pct'),P('Level',0x1E,'pct'),P('Sustain',0x20,'pct'),P('Tone',0x22,'lvl',-50,50)]],
+  ['Noise Suppressor',[P('Threshold',0x24,'pct'),P('Release',0x26,'pct')]],
+  ['Auto Wah',[E('Mode',0x28,['LPF','BPF']),E('Polarity',0x2A,['Down','Up']),P('Frequency',0x2C,'pct'),P('Level',0x2E,'pct'),P('Peak',0x30,'pct'),P('Sens',0x32,'pct'),P('Rate',0x34,'hz10'),P('Depth',0x36,'pct')]],
+  ['Amp Simulator',[E('Mode',0x38,AMP_MODES)]],
+  ['Flanger',[P('Rate',0x3A,'hz10'),P('Depth',0x3C,'pct'),P('Manual',0x3E,'pct'),P('Resonance',0x40,'pct')]],
+  ['Delay',[P('Delay Time',0x42,'ms',0,1000),P('Shift',0x44,'sms',-1000,1000),P('Fb Time',0x46,'ms',0,1000),P('Feedback',0x48,'lvl'),P('Effect Level',0x4A,'lvl'),P('Direct Level',0x4C,'lvl')]],
+  [drive,drive==='Metal'?[P('Gain',0x4E,'pct'),P('Level',0x50,'pct'),P('High',0x52,'lvl'),P('Mid',0x54,'lvl'),P('Low',0x56,'lvl')]:[P('Gain',0x4E,'pct'),P('Level',0x50,'pct'),P('Tone',0x52,'pct')]]]});
+const tap=n=>{const b=0x10+(n-1)*6;return[P(`T${n} Time`,b,'ms',0,1200),P(`T${n} Level`,b+2,'pct'),P(`T${n} Pan`,b+4,'pan')];};
+const compAB=(lab,b)=>[E(`${lab} Detect`,b,['A','B','Link']),P(`${lab} Level`,b+2,'dbc'),P(`${lab} Thresh`,b+4,'dbc',-60,0),P(`${lab} Attack`,b+6,'pct'),P(`${lab} Release`,b+8,'pct'),E(`${lab} Ratio`,b+10,['1.5:1','2:1','4:1','100:1']),E(`${lab} NS Detect`,b+12,['A','B','Link']),P(`${lab} NS Thresh`,b+14,'pct'),P(`${lab} NS Release`,b+16,'pct')];
+const LAYOUTS={
+  0:{wet:[0x3E],switches:SW(['EQ']),groups:[
+      ['Reverb',[P('Room Size',0x28,'m'),P('Rev Time',0x2A,'sec10',1,320),P('Pre Delay',0x2C,'ms',0,200),P('Diffusion',0x2E,'pct'),P('Density',0x30,'pct'),P('Early Refl',0x32,'pct'),
+        P('LF Damp Freq',0x34,'f10',5,400),P('LF Damp Gain',0x36,'db36'),P('HF Damp Freq',0x38,'k01',10,200),P('HF Damp Gain',0x3A,'db36'),P('High Cut',0x3C,'k01',2,200),P('Effect Level',0x3E,'lvl'),P('Direct Level',0x40,'lvl')]],
+      ['EQ (before reverb)',eqBlock(0x10)]]},
+  1:{wet:[0x1A,0x1C],switches:SW(['Delay','EQ']),groups:[
+      ['Delay',[P('Delay Time',0x12,'ms',0,1200),P('Shift',0x14,'sms',-1200,1200),P('L Feedback',0x16,'lvl'),P('R Feedback',0x18,'lvl'),P('L Level',0x1A,'lvl'),P('R Level',0x1C,'lvl'),
+        P('LF Damp Freq',0x1E,'f10',5,400),P('LF Damp Gain',0x20,'db36'),P('HF Damp Freq',0x22,'k01',10,200),P('HF Damp Gain',0x24,'db36'),P('Direct Level',0x26,'lvl')]],
+      ['EQ (output)',eqBlock(0x28)]]},
+  2:{wet:[0x20,0x2A],switches:SW(['Delay','Chorus','EQ']),groups:[
+      ['Delay',[P('Delay Time',0x14,'ms',0,500),P('Shift',0x16,'sms',-500,500),P('L Feedback',0x18,'lvl'),P('R Feedback',0x1A,'lvl'),P('L Cross Fb',0x1C,'lvl'),P('R Cross Fb',0x1E,'lvl'),P('Effect Level',0x20,'lvl'),P('Direct Level',0x22,'lvl')]],
+      ['Chorus',[P('Rate',0x24,'hz10'),P('Depth',0x26,'pct'),P('Pre Delay',0x28,'ms',0,50),P('Effect Level',0x2A,'lvl'),P('Direct Level',0x2C,'lvl'),P('L Feedback',0x2E,'lvl'),P('R Feedback',0x30,'lvl'),P('L Cross Fb',0x32,'lvl'),P('R Cross Fb',0x34,'lvl')]],
+      ['EQ (output)',eqBlock(0x36)]]},
+  3:{wet:[0x2A],switches:SW(['Pitch Delay','EQ']),groups:[
+      ['Left',[P('L Pitch',0x12,'semi'),P('L Fine',0x14,'lvl'),P('L Pre Delay',0x16,'ms',0,50),P('L Fb Time',0x18,'ms',0,500),P('L Feedback',0x1A,'lvl'),P('L Cross Fb',0x1C,'lvl')]],
+      ['Right',[P('R Pitch',0x1E,'semi'),P('R Fine',0x20,'lvl'),P('R Pre Delay',0x22,'ms',0,50),P('R Fb Time',0x24,'ms',0,500),P('R Feedback',0x26,'lvl'),P('R Cross Fb',0x28,'lvl')]],
+      ['Levels',[P('Effect Level',0x2A,'lvl'),P('Direct Level',0x2C,'lvl')]],
+      ['EQ (output)',eqBlock(0x2E)]]},
+  4:{wet:[0x2C],switches:SW(['Chorus']),groups:[
+      ['Voice Character',[...Array(10)].map((_,k)=>P(`V.Char ${k+1}`,0x10+2*k,'pct'))],
+      ['Chorus',[P('Rate',0x24,'hz10'),P('Depth',0x26,'pct'),P('Effect Level',0x2C,'lvl'),P('Direct Level',0x2E,'lvl'),P('Pre Delay',0x28,'ms',0,50),P('Feedback',0x2A,'lvl')]]]},
+  5:{switches:[],groups:[['RSS placement',[P('A Azimuth',0x0E,'deg'),P('A Elevation',0x10,'deg',-90,90),P('B Azimuth',0x12,'deg'),P('B Elevation',0x14,'deg',-90,90)]]]},
+  6:{wet:[0x22],switches:[],groups:[['3-Tap Delay',[P('Delay Time',0x0E,'ms',0,1200),P('Shift',0x10,'sms'),P('Center Time',0x12,'ms',0,1200),P('RSS Level',0x14,'pct'),P('Center Level',0x16,'pct'),P('Feedback',0x18,'lvl'),
+      P('LF Damp Freq',0x1A,'f10',5,400),P('LF Damp Gain',0x1C,'db36'),P('HF Damp Freq',0x1E,'k01',10,200),P('HF Damp Gain',0x20,'db36'),P('Effect Level',0x22,'lvl'),P('Direct Level',0x24,'lvl')]]]},
+  7:{wet:[0x12],switches:[],groups:[['Chorus',[P('Rate',0x0E,'hz10'),P('Depth',0x10,'pct'),P('Effect Level',0x12,'lvl'),P('Direct Level',0x14,'lvl')]]]},
+  8:guitarMulti('Metal'), 9:guitarMulti('Distortion'), 10:guitarMulti('OverDrive'),
+  11:{switches:SW(['Noise Sup','Lim/De-ess','Enhancer','EQ','Pitch','Delay','Chorus']),groups:[
+      ['Noise Suppressor',[P('Threshold',0x1E,'pct'),P('Release',0x20,'pct')]],
+      ['Limiter / De-esser',[E('Mode',0x1C,['Limiter','De-esser']),P('Lim Thresh',0x22,'pct'),P('Lim Release',0x24,'pct'),P('Lim Level',0x26,'pct'),P('DeEss Sens',0x28,'pct'),P('DeEss Freq',0x2A,'k01',10,100)]],
+      ['Enhancer',[P('Sens',0x2C,'pct'),P('Frequency',0x2E,'k01',10,100),P('Mix Level',0x30,'pct'),P('Level',0x32,'pct')]],
+      ['EQ',eqBlock(0x34)],
+      ['Pitch Shifter',[P('Pitch',0x4C,'semi'),P('Fine',0x4E,'lvl'),P('Effect Level',0x50,'lvl'),P('Direct Level',0x52,'lvl')]],
+      ['Delay',[P('Delay Time',0x54,'ms',0,1000),P('Feedback',0x56,'lvl'),P('Effect Level',0x58,'lvl'),P('Direct Level',0x5A,'lvl')]],
+      ['Chorus',[P('Rate',0x5C,'hz10'),P('Depth',0x5E,'pct'),P('Pre Delay',0x60,'ms',0,50),P('Effect Level',0x62,'lvl'),P('Direct Level',0x64,'lvl')]]]},
+  12:{switches:SW(['Noise Sup','OverDrive']),groups:[
+      ['Noise Suppressor',[P('Threshold',0x12,'pct'),P('Release',0x14,'pct')]],
+      ['OverDrive',[P('Gain',0x16,'pct'),P('Level',0x18,'pct')]],
+      ['Rotary',[P('Low Rate',0x1A,'hz10'),P('Hi Rate',0x1C,'hz10')]]]},
+  13:{switches:SW(['Noise Sup','Pre Amp','Speaker']),groups:[
+      ['Noise Suppressor',[P('Threshold',0x14,'pct'),P('Release',0x16,'pct')]],
+      ['Pre Amp',[E('Amp Type',0x18,['JC-120','Clean Twin','Match Drive','BG Lead','MS1959 I','MS1959 II','MS1959 I+II','SLDN Lead','Metal 5150','Metal Lead','OD-1','OD-2 Turbo','Distortion','Fuzz']),
+        P('Volume',0x1A,'pct'),P('Bass',0x1C,'pct'),P('Middle',0x1E,'pct'),P('Treble',0x20,'pct'),P('Presence',0x22,'pct'),P('Master',0x24,'pct'),E('Bright',0x26,['Off','On']),E('Gain',0x28,['Low','Middle','High'])]],
+      ['Speaker',[E('Speaker',0x2A,['Small','Middle','JC-120','Built In 1','Built In 2','Built In 3','Built In 4','BG Stack 1','BG Stack 2','MS Stack 1','MS Stack 2','Metal Stack']),
+        E('Mic Setting',0x2C,['1','2','3']),P('Mic Level',0x2E,'pct'),P('Direct Level',0x30,'pct')]]]},
+  14:{wet:[0x20],switches:SW(['Phaser','EQ']),groups:[
+      ['Phaser',[E('Mode',0x12,['4 stage','8 stage','12 stage','16 stage']),P('Rate',0x14,'hz10'),P('Depth',0x16,'pct'),E('Polarity',0x18,['Inverse','Synchro']),P('Manual',0x1A,'pct'),P('Resonance',0x1C,'pct'),P('Cross Fb',0x1E,'pct'),P('Effect Level',0x20,'lvl'),P('Direct Level',0x22,'lvl')]],
+      ['EQ (output)',eqBlock(0x24)]]},
+  15:{wet:[0x1E],switches:SW(['Flanger','EQ']),groups:[
+      ['Flanger',[P('Rate',0x12,'hz10'),P('Depth',0x14,'pct'),E('Polarity',0x16,['Inverse','Synchro']),P('Manual',0x18,'pct'),P('Resonance',0x1A,'pct'),P('Cross Fb',0x1C,'pct'),P('Effect Level',0x1E,'lvl'),P('Direct Level',0x20,'lvl')]],
+      ['EQ (output)',eqBlock(0x22)]]},
+  16:{switches:SW(['Comp A','NS A','Comp B','NS B']),groups:[['Processor A',compAB('A',0x16)],['Processor B',compAB('B',0x28)]]},
+  17:{wet:[0x16],switches:SW(['Gate Reverb','EQ']),groups:[
+      ['Gate Reverb',[P('Gate Time',0x12,'ms',10,400),P('Pre Delay',0x14,'ms',0,300),E('Mode',0x18,['Normal','L→R','R→L','Reverse 1','Reverse 2']),P('Effect Level',0x16,'lvl'),P('Direct Level',0x24,'lvl'),P('Thickness',0x1A,'pct'),P('Density',0x1C,'pct'),
+        P('Accent Delay',0x1E,'ms',0,200),P('Accent Level',0x20,'pct'),P('Accent Pan',0x22,'pan')]],
+      ['EQ (output)',eqBlock(0x26)]]},
+  18:{wet:[0x50],switches:SW(['EQ']),groups:[
+      ['Taps 1–5',[1,2,3,4,5].flatMap(tap)],['Taps 6–10',[6,7,8,9,10].flatMap(tap)],
+      ['Feedback & levels',[P('Fb Time',0x4C,'ms',0,1200),P('Feedback',0x4E,'lvl'),P('Effect Level',0x50,'lvl'),P('Direct Level',0x52,'lvl')]],
+      ['EQ (output)',eqBlock(0x54)]]},
+  19:{switches:SW(['Noise Sup','Comp/Lim','Enhancer','EQ']),groups:[
+      ['Noise Suppressor',[P('Threshold',0x16,'pct'),P('Release',0x18,'pct')]],
+      ['Compressor / Limiter',[P('Level',0x1A,'dbc'),P('Threshold',0x1C,'dbc',-60,0),P('Attack',0x1E,'pct'),P('Release',0x20,'pct'),E('Ratio',0x22,['1.5:1','2:1','4:1','100:1'])]],
+      ['Enhancer',[P('Sens',0x24,'pct'),P('Frequency',0x26,'k01',10,100),P('Mix Level',0x28,'pct'),P('Level',0x2A,'pct')]],
+      ['EQ',eqBlock(0x2C)]]}
+};
+
+/* ================= helpers ================= */
+const $=id=>document.getElementById(id);
+const hex=n=>n.toString(16).toUpperCase().padStart(2,'0');
+const hx=a=>Array.from(a,hex).join(' ');
+const csum=b=>(128-(b.reduce((a,c)=>a+c,0)%128))%128;
+const enc=v=>{const x=v<0?v+16384:v;return[(x>>7)&0x7F,x&0x7F];};
+const dec=(a,b)=>{const x=((a&0x7F)<<7)|(b&0x7F);return x>=8192?x-16384:x;};
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const store={get(k,d){try{const v=localStorage.getItem('vs880fx:'+k);return v==null?d:JSON.parse(v);}catch(e){return d;}},
+             set(k,v){try{localStorage.setItem('vs880fx:'+k,JSON.stringify(v));}catch(e){}}};
+
+/* ================= state ================= */
+const S={bankDumps:{},bankNames:store.get('bankNames2',{}),lastLocal:0,library:store.get('library',[]),access:null,out:null,inp:null,ctlIn:null,ctlOut:null,learn:null,
+  maps:store.get('maps',{}),labels:store.get('labels',{}),bankMode:store.get('bankMode2','cc32'),
+  fx:[0,1].map(i=>({i,raw:[],orig:null,algo:null,name:'',vals:{},snapA:null,snapB:null,morph:null,pick:{},thr:{}}))};
+
+/* ================= log ================= */
+function log(msg,cls=''){const L=$('log');if(!L)return;const d=document.createElement('div');d.className=cls;d.textContent=new Date().toLocaleTimeString()+'  '+msg;L.appendChild(d);while(L.children.length>600)L.firstChild.remove();L.scrollTop=L.scrollHeight;}
+
+/* ================= MIDI ================= */
+async function init(){
+  if(!navigator.requestMIDIAccess){$('status').textContent='No Web MIDI here — open this in Chrome or Edge.';return;}
+  try{S.access=await navigator.requestMIDIAccess({sysex:true});}catch(e){$('status').textContent='MIDI access refused: '+e.message;return;}
+  S.access.onstatechange=fillPorts;fillPorts();
+}
+function fillPorts(){
+  const saved=store.get('ports',{});
+  const fill=(sel,list,none)=>{const keep=sel.value||saved[sel.id]||'';sel.innerHTML='';if(none)sel.add(new Option('— none —',''));
+    for(const p of list)sel.add(new Option(p.name,p.id));
+    const byName=[...sel.options].find(o=>o.value===keep||o.text===keep);if(byName)sel.value=byName.value;};
+  fill($('outSel'),S.access.outputs.values());fill($('inSel'),S.access.inputs.values(),true);
+  fill($('ctlInSel'),S.access.inputs.values(),true);fill($('ctlOutSel'),S.access.outputs.values(),true);
+  bindPorts();
+}
+function bindPorts(){
+  const A=S.access;
+  [S.inp,S.ctlIn].forEach(p=>{if(p)p.onmidimessage=null;});
+  S.out=A.outputs.get($('outSel').value)||null;S.inp=A.inputs.get($('inSel').value)||null;
+  S.ctlIn=A.inputs.get($('ctlInSel').value)||null;S.ctlOut=A.outputs.get($('ctlOutSel').value)||null;
+  const handler=e=>{if(e.target===S.inp)onVS(e);if(e.target===S.ctlIn)onCtl(e);};
+  if(S.inp)S.inp.onmidimessage=handler; if(S.ctlIn)S.ctlIn.onmidimessage=handler;
+  const names={};['outSel','inSel','ctlInSel','ctlOutSel'].forEach(id=>{const o=$(id).selectedOptions[0];names[id]=o?o.text:'';});store.set('ports',names);
+  $('status').textContent=S.out&&S.inp?`VS-880: ${S.out.name} ⇄ ${S.inp.name}`:'Pick the VS-880 ports';
+  $('status').className=S.out&&S.inp?'ok':'';
+  leds();
+}
+['outSel','inSel','ctlInSel','ctlOutSel'].forEach(id=>$(id).onchange=bindPorts);
+$('rescan').onclick=fillPorts;
+
+const dev=()=>clamp((+$('devId').value||17)-1,0,31);
+function send(bytes,quiet){if(!S.out){log('No VS-880 output selected','err');return false;}try{S.out.send(bytes);}catch(e){log('Send failed: '+e.message,'err');return false;}if(!quiet)log('→ '+hx(bytes),'out');return true;}
+const dt1=(a,d)=>{const b=[...a,...d];return[0xF0,0x41,dev(),0x7C,0x12,...b,csum(b),0xF7];};
+const rq1=(a,s)=>{const b=[...a,...s];return[0xF0,0x41,dev(),0x7C,0x11,...b,csum(b),0xF7];};
+
+/* ================= reading ================= */
+const renderTimers=[null,null];
+function readFx(i,mode){const F=S.fx[i];F.raw=[];F.mode=mode||'read';send(rq1([0x04,i,0x00],[0x00,0x01,0x00]),mode==='follow');}
+let followTurn=0;
+setInterval(()=>{if(!$('follow').checked||!S.out||!S.inp||SCAN.active)return;
+  if(performance.now()-S.lastLocal<1500||document.querySelector('.kset'))return; // don't fight the user
+  const i=followTurn++%2;if(S.fx[i].algo!==null||i===0)readFx(i,'follow');},750);
+$('readAll').onclick=()=>{readFx(0);setTimeout(()=>readFx(1),250);setTimeout(mixRead,500);};
+function onVS(e){
+  const d=e.data,s=d[0];
+  if(s>=0xF8||s===0xF1){if(!$('hideClock').checked)log('← '+hx(d),'in');return;}
+  if(s===0xF0&&d[1]===0x41&&d[3]===0x7C&&d[4]===0x12){
+    const a=[d[5],d[6],d[7]],data=Array.from(d.slice(8,d.length-2));
+    if(SCAN.active){scanStore(a,data);return;}
+    if(a[0]===0x02){if(data.length<=2)log(`← DT1 ${hx(a)} : ${hx(data)}`,'in');mixStore(a,data);return;}
+    if(a[0]===0x00||a[0]===0x01){hoodStore(a,data);return;}
+    if(!(a[0]===0x04&&S.fx[a[1]]&&S.fx[a[1]].mode==='follow'))log(`← DT1 ${hx(a)} : ${hx(data)}`,'in');
+    if(a[0]===0x04&&(a[1]===0||a[1]===1)){const F=S.fx[a[1]];data.forEach((b,k)=>{if(a[2]+k<0x80)F.raw[a[2]+k]=b;});
+      clearTimeout(renderTimers[a[1]]);renderTimers[a[1]]=setTimeout(()=>parseFx(a[1]),120);}
+    return;}
+  log('← '+hx(d),'in');
+}
+function parseFx(i){
+  const F=S.fx[i],r=F.raw;if(r[0]===undefined)return;
+  const newAlgo=dec(r[0],r[1]),newName=String.fromCharCode(...r.slice(2,14).map(c=>c===undefined?32:c));
+  const algoChanged=F.algo!==newAlgo,follow=F.mode==='follow'&&!algoChanged&&newName===F.name;
+  F.algo=newAlgo;F.name=newName;
+  const L=layoutFor(F);
+  if(follow){ // quiet update: only move knobs whose value changed on the machine
+    for(const p of L.all){if(r[p.off]===undefined)continue;const v=dec(r[p.off],r[p.off+1]);if(F.vals[p.off]!==v){F.vals[p.off]=v;delete F.pick[p.off];updateKnob(i,p);}}
+    hexView();if(F.onRead){const cb=F.onRead;F.onRead=null;cb();}return;}
+  F.vals={};for(const p of L.all)if(r[p.off]!==undefined)F.vals[p.off]=dec(r[p.off],r[p.off+1]);
+  F.orig={...F.vals};F.pick={};
+  if(algoChanged){F.snapA=F.snapB=null;}
+  if(!follow){F.bypass=null;const bb=$('bypass'+i);if(bb)bb.classList.remove('on');}
+  renderFx(i);hexView();
+  if(i===1&&FX1_ONLY_ALGOS.has(F.algo)){alertNote(1,`${ALGOS[F.algo]} can't run on Effect 2 — switched to A81 Delay for safety.`);F.onRead=null;loadPreset(1,0,81);return;}
+  if(F.onRead){const cb=F.onRead;F.onRead=null;cb();}
+}
+
+/* ================= layouts ================= */
+function layoutFor(F){
+  const L=LAYOUTS[F.algo];
+  if(L){const all=[...L.switches,...L.groups.flatMap(g=>g[1])];return{known:true,switches:L.switches,groups:L.groups,all};}
+  // unknown algorithm: raw slots, user-labelable
+  let last=0x0E;for(let o=0x0E;o<0x6E;o+=2)if(F.raw[o]||F.raw[o+1])last=o;
+  const slots=[];for(let o=0x0E;o<=Math.min(last+2,0x6C);o+=2){const v=dec(F.raw[o]||0,F.raw[o+1]||0);
+    const lab=S.labels[`${F.algo}:${o}`];slots.push(P(lab||('P '+hex(o)),o,'raw',Math.min(-100,v),Math.max(127,v),{slot:1}));}
+  return{known:false,switches:[],groups:[['Parameters (unmapped — click a label to name it)',slots]],all:slots};
+}
+
+/* ================= writing ================= */
+function setParam(i,p,v,from){
+  const F=S.fx[i];v=clamp(Math.round(v),p.min,p.max);
+  if(F.vals[p.off]===v&&from!=='force')return;
+  S.lastLocal=performance.now();F.vals[p.off]=v;const e=enc(v);F.raw[p.off]=e[0];F.raw[p.off+1]=e[1];
+  throttled(i,p.off,()=>send(dt1([0x04,i,p.off],enc(F.vals[p.off])),true));
+  updateKnob(i,p);
+}
+function throttled(i,key,fn){const T=S.fx[i].thr,now=performance.now(),t=T[key]||(T[key]={last:0,timer:null});
+  const gap=25;if(now-t.last>=gap){t.last=now;fn();}else{clearTimeout(t.timer);t.timer=setTimeout(()=>{t.last=performance.now();fn();},gap-(now-t.last));}}
+function writeName(i,name){const n=(name||'').padEnd(12,' ').slice(0,12);const b=[...n].map(c=>{const k=c.charCodeAt(0);return k>=32&&k<127?k:32;});
+  send(dt1([0x04,i,0x02],b));S.fx[i].name=n;b.forEach((c,k)=>S.fx[i].raw[2+k]=c);renderFx(i);}
+function loadPreset(i,bank,n){ // bank 0=A 1=B 2=U, n 0–99
+  const ch=i,m=S.bankMode;
+  if(m==='cc0'||m==='both')send([0xB0|ch,0,bank]);
+  if(m==='cc32'||m==='both')send([0xB0|ch,32,bank]);
+  send([0xC0|ch,n]);setTimeout(()=>readFx(i),450);}
+function revert(i){const F=S.fx[i];if(!F.orig)return;const L=layoutFor(F);for(const p of L.all){if(F.orig[p.off]!==undefined&&F.orig[p.off]!==F.vals[p.off])setParam(i,p,F.orig[p.off],'force');}}
+function applySnap(i,snap){const F=S.fx[i];const L=layoutFor(F);for(const p of L.all)if(snap[p.off]!==undefined)setParam(i,p,snap[p.off]);}
+function morphTo(i,t){const F=S.fx[i];if(!F.snapA||!F.snapB)return;const L=layoutFor(F);
+  for(const p of L.all){if(p.unit==='sw'||p.unit==='type')continue;const a=F.snapA[p.off],b=F.snapB[p.off];if(a===undefined||b===undefined||a===b)continue;setParam(i,p,a+(b-a)*t);}
+  const m=$(`morph${i}`);if(m)m.value=Math.round(t*127);}
+
+/* ================= controller (nanoKONTROL2) ================= */
+const mapKey=(i,algo,off)=>`${i}:${algo}:${off}`;
+function onCtl(e){const[s,c,v]=e.data;if((s&0xF0)!==0xB0)return;const ch=s&15;
+  if(S.learn){const{key}=S.learn;for(const k in S.maps)if(S.maps[k].ch===ch&&S.maps[k].cc===c&&k!==key&&sameScope(k,key))delete S.maps[k];
+    const prev=S.maps[key]||{};S.maps[key]={...prev,ch,cc:c};store.set('maps',S.maps);const L=S.learn;S.learn=null;
+    log(`Learned ch${ch+1} CC${c} → ${key}`);if(L.fx!==undefined)renderFx(L.fx);leds();return;}
+  for(const i of[0,1]){const F=S.fx[i];if(F.algo===null)continue;
+    const mk=`${i}:morph`;const mm=S.maps[mk];if(mm&&mm.ch===ch&&mm.cc===c){morphTo(i,v/127);continue;}
+    for(const p of layoutFor(F).all){const m=S.maps[mapKey(i,F.algo,p.off)];if(!m||m.ch!==ch||m.cc!==c)continue;
+      if(p.unit==='sw'||p.unit==='type'){if(v>=64)setParam(i,p,F.vals[p.off]?0:1);continue;}
+      const lo=m.min??p.min,hi=m.max??p.max,target=Math.round(lo+(hi-lo)*v/127);
+      if($('pickup').checked){const cur=F.vals[p.off]??target,pk=F.pick[p.off];
+        if(!pk||!pk.caught){const prev=pk?pk.last:null;const crossed=prev!==null&&((prev<=cur&&target>=cur)||(prev>=cur&&target<=cur));
+          F.pick[p.off]={caught:Math.abs(target-cur)<=Math.max(1,(hi-lo)/64)||crossed,last:target};
+          if(!F.pick[p.off].caught){flagPickup(i,p,true);continue;} flagPickup(i,p,false);}}
+      setParam(i,p,target);}}
+}
+const sameScope=(a,b)=>a.split(':').slice(0,2).join()===b.split(':').slice(0,2).join()||a.endsWith('morph')||b.endsWith('morph');
+function flagPickup(i,p,waiting){const el=document.querySelector(`[data-k="${i}-${p.off}"] .kval`);if(el)el.style.opacity=waiting?.45:1;}
+function leds(){if(!S.ctlOut)return;const lit=new Set();
+  for(const i of[0,1]){const F=S.fx[i];for(const k in S.maps){if(!k.startsWith(i+':'))continue;const m=S.maps[k];if(!m||m.cc===undefined)continue;
+    if(m.cc>=16&&m.cc<=23)lit.add(m.cc-16);else if(m.cc<=7)lit.add(m.cc);}}
+  try{for(let s=0;s<8;s++)S.ctlOut.send([0xB0,32+s,lit.has(s)?127:0]);S.ctlOut.send([0xB0,46,S.out?127:0]);}catch(e){}}
+
+/* ================= UI ================= */
+function fxCard(i){
+  const el=document.createElement('section');el.className='fx';el.id='fx'+i;
+  el.innerHTML=`<div class="fxhead"><div class="fxtag">EFFECT ${i+1}</div>
+    <div class="lcd"><div class="l1"><span id="algo${i}">— not read yet —</span><span id="pg${i}"></span></div><div class="l2" id="name${i}">            </div></div></div>
+    <div class="tools">
+      <button id="read${i}">Read</button>
+      <select id="bank${i}"><option value="0">A</option><option value="1">B</option><option value="2">U</option></select><select id="preset${i}"></select><button id="load${i}">Load</button><button id="names${i}" hidden title="Loads every patch of this bank once to read its name, then puts your current patch back (about a minute)">Read names</button>
+      <input class="name" id="nameIn${i}" maxlength="12" placeholder="New name"><button id="rename${i}">Rename</button>
+      <button id="revert${i}" title="Put back the values from the last Read">Revert</button>
+      <button id="bypass${i}" title="Switch this effect's blocks off / back on">Bypass</button>
+      <button id="safe${i}" title="Emergency: load A81 Delay (safe on both effects) — use if the VS-880 beeps or howls" style="border-color:var(--bad);color:var(--bad)">Safe</button>
+    </div>
+    <div class="tools">
+      <span class="unk" title="Patches kept on this computer (in this browser), usable in every song">My library (this computer)</span>
+      <select id="lib${i}"></select><button id="libSend${i}" title="Send the chosen library patch into this effect">Send</button>
+      <button id="libStore${i}" title="Keep the current patch in this browser's library">Store</button>
+      <button id="libDel${i}" class="small" title="Remove from library">✕</button>
+      <button id="saveSyx${i}" title="Download the current patch as a .syx file">Save .syx</button>
+      <button id="openSyx${i}" title="Open a .syx patch file and send it into this effect">Open .syx</button>
+      <button id="howSave${i}" title="How to store the current patch in a U slot on the VS-880">Save to U slot?</button>
+      <input type="file" id="file${i}" accept=".syx,.SYX" hidden>
+    </div>
+    <div class="tools morph">
+      <button id="snapA${i}">Snap A</button><button id="snapB${i}">Snap B</button>
+      <span class="unk">A</span><input type="range" id="morph${i}" min="0" max="127" value="0" disabled><span class="unk">B</span>
+      <button class="small" id="morphL${i}">L</button><span class="unk" id="morphInfo${i}">store two settings, then morph</span>
+    </div>
+    <div id="body${i}"><p class="note">Press Read to load what's on the VS-880.</p></div>`;
+  $('fxgrid').appendChild(el);
+  const ps=$('preset'+i),bk=$('bank'+i);
+  const fillPresets=()=>{const b=+bk.value,keep=ps.value;ps.innerHTML='';const L='ABU'[b];
+    for(let n=0;n<100;n++){let txt=`${L}${String(n).padStart(2,'0')}`;
+      if(b===0)txt+=`  ${PRESETS[n]}  · ${ALGOS[PRESET_ALGO[n+1]]}`;else{const nm=(S.bankNames[L]||{})[n];txt+=nm?`  ${nm}`:'  —';}
+      const o=new Option(txt,n);if(b===0&&i===1&&FX1_ONLY.has(n+1))o.disabled=true;ps.add(o);}
+    if([...ps.options].some(o=>o.value===keep&&!o.disabled))ps.value=keep;};
+  bk.onchange=fillPresets;fillPresets();ps._fill=fillPresets;
+  $('read'+i).onclick=()=>readFx(i);
+  const doLoad=()=>{const b=+bk.value,n=+ps.value;loadPreset(i,b,n);
+    if(b>0)S.fx[i].onRead=()=>{rememberName(b,n,S.fx[i].name);fillPresets();};};
+  $('names'+i).onclick=()=>readBankNames(i,+bk.value).then(fillPresets);
+  if(i===0)$('names0').hidden=false;
+  $('load'+i).onclick=doLoad;ps.ondblclick=doLoad;
+  $('rename'+i).onclick=()=>{const v=$('nameIn'+i).value;if(v.trim())writeName(i,v);};
+  $('revert'+i).onclick=()=>revert(i);
+  $('safe'+i).onclick=()=>{S.fx[i].bypass=null;$('bypass'+i).classList.remove('on');loadPreset(i,0,81);alertNote(i,'Loaded A81 Delay as a safe patch.');};
+  $('bypass'+i).onclick=()=>{const F=S.fx[i];if(F.algo===null)return;const L=layoutFor(F),wet=(LAYOUTS[F.algo]||{}).wet;
+    const ps=wet?L.all.filter(p=>wet.includes(p.off)):L.switches;
+    if(!ps.length){alertNote(i,'No bypass for this effect yet — use Safe, or turn the effect return down on the VS-880.');return;}
+    if(F.bypass){for(const p of ps)if(F.bypass[p.off]!==undefined)setParam(i,p,F.bypass[p.off]);F.bypass=null;}
+    else{F.bypass={};for(const p of ps){F.bypass[p.off]=F.vals[p.off];setParam(i,p,0);}}
+    $('bypass'+i).classList.toggle('on',!!F.bypass);};
+  $('libStore'+i).onclick=()=>{const F=S.fx[i];if(F.algo===null){alertNote(i,'Press Read first.');return;}S.library.push({name:F.name.trimEnd(),algo:F.algo,data:patchBytes(i),date:new Date().toISOString().slice(0,10)});saveLib();
+    $('lib'+i).value=String(S.library.length-1);alertNote(i,`Stored “${F.name.trimEnd()}” in your library on this computer (no MIDI needed). To also keep it on the VS-880, use “Save to U slot?”.`);};
+  $('howSave'+i).onclick=()=>alertNote(i,`On the VS-880: press EFFECT until “EFFECT-${i+1} PRM?”, YES, then PARAMETER ▶ past the name (EF${i+1} Nam=) to “Save User Patch?” → YES → turn the dial to the U slot → YES. Then reload it here from bank U.`,25000);
+  $('libSend'+i).onclick=()=>{const e=S.library[+$('lib'+i).value];if(e)sendPatch(i,e.data,e.name);};
+  $('libDel'+i).onclick=()=>{const k=+$('lib'+i).value;if(S.library[k]&&confirmDel(S.library[k].name)){S.library.splice(k,1);saveLib();}};
+  $('saveSyx'+i).onclick=()=>{const F=S.fx[i];if(F.algo===null)return;const msg=new Uint8Array(dt1([0x04,0x00,0x00],patchBytes(i)));
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([msg],{type:'application/octet-stream'}));a.download=`VS880 FX - ${F.name.trim()||'patch'}.syx`;a.click();};
+  $('openSyx'+i).onclick=()=>$('file'+i).click();
+  $('file'+i).onchange=async e=>{const f=e.target.files[0];if(!f)return;const b=new Uint8Array(await f.arrayBuffer());e.target.value='';
+    const d=parseSyxPatch(b);if(!d){log('That file is not a VS-880 FX patch','err');alertNote(i,'Not a VS-880 FX patch file.');return;}sendPatch(i,d,f.name);};
+  $('snapA'+i).onclick=()=>{S.fx[i].snapA={...S.fx[i].vals};morphUI(i);};
+  $('snapB'+i).onclick=()=>{S.fx[i].snapB={...S.fx[i].vals};morphUI(i);};
+  $('morph'+i).oninput=e=>morphTo(i,e.target.value/127);
+  $('morphL'+i).onclick=()=>startLearn({key:`${i}:morph`,fx:i},$('morphL'+i));
+}
+function morphUI(i){const F=S.fx[i];const ok=F.snapA&&F.snapB;$('morph'+i).disabled=!ok;
+  $('snapA'+i).classList.toggle('on',!!F.snapA);$('snapB'+i).classList.toggle('on',!!F.snapB);
+  const m=S.maps[`${i}:morph`];$('morphInfo'+i).textContent=ok?(m?`fader: CC${m.cc}`:'ready — drag or learn a fader'):'store two settings, then morph';}
+function startLearn(obj,btn){if(S.learn&&S.learn.key===obj.key){S.learn=null;document.querySelectorAll('.learning').forEach(e=>e.classList.remove('learning'));return;}
+  document.querySelectorAll('.learning').forEach(e=>e.classList.remove('learning'));S.learn=obj;(btn.closest('.knob')||btn).classList.add('learning');
+  if(!S.ctlIn)log('Pick a controller input first','err');}
+
+function renderFx(i){
+  const F=S.fx[i],body=$('body'+i);if(F.algo===null)return;
+  const known=F.algo<ALGOS.length;$('algo'+i).textContent=`Algorithm ${F.algo} · ${known?ALGOS[F.algo]:'V-Xpanded algorithm'}`;
+  $('pg'+i).textContent=known?`manual p.${MANUAL_PAGE[F.algo]}`:'';
+  $('name'+i).textContent=F.name;$('nameIn'+i).value=F.name.trimEnd();
+  const L=layoutFor(F);body.innerHTML='';
+  if(L.switches.length){const g=document.createElement('div');g.className='group';g.innerHTML='<h3>Switches</h3>';const w=document.createElement('div');w.className='sw';
+    for(const p of L.switches){const b=document.createElement('button');b.dataset.k=`${i}-${p.off}`;const upd=()=>{b.textContent=`${p.name}: ${F.vals[p.off]?'On':'Off'}`;b.classList.toggle('on',!!F.vals[p.off]);};
+      b._upd=upd;upd();b.onclick=()=>setParam(i,p,F.vals[p.off]?0:1);b.oncontextmenu=ev=>{ev.preventDefault();startLearn({key:mapKey(i,F.algo,p.off),fx:i},b);};
+      b.title='Click to toggle · right-click to learn a nanoKONTROL2 button';w.appendChild(b);}
+    g.appendChild(w);body.appendChild(g);}
+  for(const[title,params]of L.groups){const g=document.createElement('div');g.className='group';g.innerHTML=`<h3>${title}</h3>`;const w=document.createElement('div');w.className='knobs';
+    for(const p of params)w.appendChild(knob(i,p));g.appendChild(w);body.appendChild(g);}
+  if(!L.known){const n=document.createElement('p');n.className='note';n.textContent=`Not mapped yet. The knobs still work — name them as you discover what they do (VS8F-1 manual p.${MANUAL_PAGE[F.algo]??'?'} lists this algorithm's parameters). Export your labels from Lab tools and send them to Ember.`;body.appendChild(n);}
+  morphUI(i);
+}
+function knob(i,p){
+  const F=S.fx[i],k=document.createElement('div');k.className='knob';k.dataset.k=`${i}-${p.off}`;
+  const key=()=>mapKey(i,F.algo,p.off);
+  if(S.maps[key()])k.classList.add('mapped');
+  k.innerHTML=`<svg viewBox="0 0 52 52" tabindex="0"><circle class="ring" cx="26" cy="26" r="20" fill="none" stroke="#3a3f46" stroke-width="5" stroke-dasharray="94.25 125.66" transform="rotate(135 26 26)"/>
+    <circle class="arc" cx="26" cy="26" r="20" fill="none" stroke="var(--acc)" stroke-width="5" stroke-dasharray="0 125.66" transform="rotate(135 26 26)"/>
+    <circle cx="26" cy="26" r="13" fill="#2f3339" stroke="#454a52"/><line class="ptr" x1="26" y1="26" x2="26" y2="15" stroke="var(--ink)" stroke-width="2.5" stroke-linecap="round"/></svg>
+    <div class="klabel" title="${p.ok?'confirmed on the VS-880':'address '+'04 0'+i+' '+hex(p.off)}">${p.name}</div><div class="kval"></div>
+    <div class="kbtns"><button class="lrn" title="Learn: then move a knob/fader on the controller">L</button><button class="set" title="Range for the controller">⚙</button></div>`;
+  const svg=k.querySelector('svg');
+  let startY=0,startV=0,drag=false;
+  svg.addEventListener('pointerdown',e=>{drag=true;startY=e.clientY;startV=F.vals[p.off]??p.min;svg.setPointerCapture(e.pointerId);svg.focus();});
+  svg.addEventListener('pointermove',e=>{if(!drag)return;const span=p.max-p.min,sens=e.shiftKey?600:180;setParam(i,p,startV+(startY-e.clientY)*span/sens);});
+  svg.addEventListener('pointerup',()=>drag=false);
+  svg.addEventListener('wheel',e=>{e.preventDefault();const step=Math.max(1,Math.round((p.max-p.min)/100))*(e.shiftKey?1:1);setParam(i,p,(F.vals[p.off]??p.min)+(e.deltaY<0?step:-step));},{passive:false});
+  svg.addEventListener('keydown',e=>{const big=Math.max(1,Math.round((p.max-p.min)/20));const m={ArrowUp:1,ArrowRight:1,ArrowDown:-1,ArrowLeft:-1,PageUp:big,PageDown:-big}[e.key];if(m){e.preventDefault();setParam(i,p,(F.vals[p.off]??p.min)+m);}});
+  svg.addEventListener('dblclick',()=>{const cur=F.vals[p.off]??p.min;const box=document.createElement('input');box.type='number';box.value=cur;box.min=p.min;box.max=p.max;box.style.width='70px';
+    const val=k.querySelector('.kval');val.replaceWith(box);box.focus();box.select();const done=()=>{if(box.value!=='')setParam(i,p,+box.value);box.replaceWith(val);updateKnob(i,p);};
+    box.onkeydown=e=>{if(e.key==='Enter')done();if(e.key==='Escape'){box.replaceWith(val);}};box.onblur=done;});
+  k.querySelector('.lrn').onclick=e=>startLearn({key:key(),fx:i},e.target);
+  k.querySelector('.set').onclick=()=>{const open=k.querySelector('.kset');if(open){open.remove();return;}
+    const m=S.maps[key()]||{};const box=document.createElement('div');box.className='kset';
+    box.innerHTML=`<b>${p.name}</b><label>Min <input type="number" class="mn" value="${m.min??p.min}"></label><label>Max <input type="number" class="mx" value="${m.max??p.max}"></label>
+      <div class="unk">${m.cc!==undefined?`Mapped: ch${m.ch+1} CC${m.cc}`:'Not mapped yet'}</div><div style="display:flex;gap:6px"><button class="ok">OK</button><button class="clr">Unmap</button></div>`;
+    box.querySelector('.ok').onclick=()=>{const mn=clamp(+box.querySelector('.mn').value,p.min,p.max),mx=clamp(+box.querySelector('.mx').value,p.min,p.max);S.maps[key()]={...(S.maps[key()]||{}),min:mn,max:mx};store.set('maps',S.maps);box.remove();};
+    box.querySelector('.clr').onclick=()=>{delete S.maps[key()];store.set('maps',S.maps);k.classList.remove('mapped');box.remove();leds();};
+    k.appendChild(box);};
+  if(p.slot){const lab=k.querySelector('.klabel');lab.contentEditable='true';lab.onblur=()=>{const t=lab.textContent.trim();const lk=`${F.algo}:${p.off}`;if(t&&t!=='P '+hex(p.off))S.labels[lk]=t;else delete S.labels[lk];store.set('labels',S.labels);};
+    lab.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();lab.blur();}};}
+  k._p=p;setTimeout(()=>updateKnob(i,p));return k;
+}
+function updateKnob(i,p){
+  const el=document.querySelector(`[data-k="${i}-${p.off}"]`);if(!el)return;
+  if(el._upd){el._upd();return;}
+  const v=S.fx[i].vals[p.off];const t=v===undefined?0:(v-p.min)/(p.max-p.min||1);
+  el.querySelector('.arc').setAttribute('stroke-dasharray',`${(94.25*clamp(t,0,1)).toFixed(2)} 125.66`);
+  el.querySelector('.ptr').setAttribute('transform',`rotate(${-135+270*clamp(t,0,1)} 26 26)`);
+  const val=el.querySelector('.kval');if(val)val.textContent=v===undefined?'—':fmt(p,v);
+  if(S.maps[mapKey(i,S.fx[i].algo,p.off)]?.cc!==undefined)el.classList.add('mapped');
+}
+
+/* ================= patch library ================= */
+const PATCH_LEN=0x6E; // 00–6D: algorithm, name, parameters (6E+ is leftover memory)
+function patchBytes(i){return S.fx[i].raw.slice(0,PATCH_LEN).map(b=>b??0);}
+function parseSyxPatch(b){ // first DT1 for model 7C at 04 xx 00
+  for(let k=0;k<b.length-12;k++){if(b[k]===0xF0&&b[k+1]===0x41&&b[k+3]===0x7C&&b[k+4]===0x12&&b[k+5]===0x04&&b[k+7]===0x00){
+    let e=k+8;while(e<b.length&&b[e]!==0xF7)e++;const d=Array.from(b.slice(k+8,e-1));return d.length>=0x10?d.slice(0,PATCH_LEN):null;}}return null;}
+const FX1_ONLY_ALGOS=new Set([0,17]); // Reverb, Gate Reverb: too heavy for Effect 2 (the VS-880 overloads and beeps)
+function patchAllowed(i,algo){
+  if(i===1&&FX1_ONLY_ALGOS.has(algo)){alertNote(i,`Blocked: ${ALGOS[algo]} only runs on Effect 1. Sending it to Effect 2 overloads the VS-880.`);log('Blocked '+ALGOS[algo]+' → FX2','err');return false;}
+  if(i===1&&algo>=ALGOS.length)return confirm('This patch uses a V-Xpanded algorithm the editor doesn\'t know yet. If it is a reverb-type effect, Effect 2 may overload (loud beep). Send anyway?');
+  return true;}
+function rememberName(b,n,name){const L='ABU'[b];(S.bankNames[L]=S.bankNames[L]||{})[n]=name.trimEnd();store.set('bankNames2',S.bankNames);}
+function loadAndRead(i,b,n){return new Promise(res=>{let done=false;S.fx[i].onRead=()=>{done=true;res(S.fx[i].name);};loadPreset(i,b,n);setTimeout(()=>{if(!done){S.fx[i].onRead=null;res(null);}},1600);});}
+async function readBankNames(i,b){
+  if(i!==0)return;const F=S.fx[0];if(F.algo===null){alertNote(0,'Press Read first, so your current patch can be put back afterwards.');return;}
+  const keep=patchBytes(0),keepName=F.name.trimEnd(),btn=$('names0');btn.disabled=true;
+  for(let n=0;n<100;n++){btn.textContent=`Reading ${'ABU'[b]}${String(n).padStart(2,'0')}…`;const nm=await loadAndRead(0,b,n);if(nm===null){alertNote(0,'The VS-880 stopped answering — is it on the main screen?');break;}rememberName(b,n,nm);S.bankDumps[`${'ABU'[b]}${String(n).padStart(2,'0')}`]=hx(patchBytes(0));}
+  btn.textContent='Read names';btn.disabled=false;sendPatch(0,keep,keepName);}
+function sendPatch(i,data,label){
+  if(!patchAllowed(i,dec(data[0],data[1])))return;
+  // step 1: algorithm + name; step 2: parameters; then read back and compare
+  send(dt1([0x04,i,0x00],data.slice(0,0x0E)));
+  setTimeout(()=>{send(dt1([0x04,i,0x0E],data.slice(0x0E)));
+    setTimeout(()=>{S.fx[i].onRead=()=>{const got=patchBytes(i);let diff=0;for(let k=0;k<data.length;k++)if((got[k]??0)!==data[k])diff++;
+      const want=dec(data[0],data[1]);
+      if(dec(got[0],got[1])!==want)alertNote(i,`The VS-880 kept its own algorithm. Load a ${ALGOS[want]||'matching'} patch first, then Send again.`);
+      else if(diff)alertNote(i,`Sent “${label}” — ${diff} byte(s) differ after read-back (see lab log).`);
+      else alertNote(i,`Sent “${label}” ✓ — press WRITE on the VS-880 to store it in a user slot.`);
+      log(`Patch send check: ${diff} differing bytes`);};readFx(i);},400);},200);
+}
+function saveLib(){store.set('library',S.library);fillLib();}
+function fillLib(){for(const i of[0,1]){const s=$('lib'+i);if(!s)continue;s.innerHTML='';if(!S.library.length)s.add(new Option('(empty — press Store)',''));
+  S.library.forEach((e,k)=>s.add(new Option(`${e.name} · ${ALGOS[e.algo]||'algo '+e.algo}`,k)));}}
+function confirmDel(n){return window.confirm?confirm(`Remove “${n}” from the library?`):true;}
+function alertNote(i,msg,ms){const id='note'+i;let n=$(id);if(!n){n=document.createElement('p');n.id=id;n.className='note';n.style.color='var(--acc)';$('body'+i).before(n);}n.textContent=msg;clearTimeout(n._t);n._t=setTimeout(()=>n.remove(),ms||9000);}
+
+/* ================= memory scanner ================= */
+const SCAN={active:false,found:{},queue:[],timer:null};
+function scanStore(a,data){const key=hx(a);SCAN.found[key]=(SCAN.found[key]||[]).concat(data);}
+function startScan(){
+  const a0=parseInt($('sc0a').value,16),a0b=parseInt($('sc0b').value,16),a1=parseInt($('sc1a').value,16),a1b=parseInt($('sc1b').value,16);
+  const stp=Math.max(1,parseInt($('scStep').value,16)||1),sz=Math.max(1,Math.min(0x7F*128,parseInt($('scSize').value,16)||0x80));SCAN.size=sz;
+  SCAN.queue=[];for(let x=a0;x<=a0b;x++)for(let y=a1;y<=a1b;y+=stp)SCAN.queue.push([x,y]);
+  SCAN.found={};SCAN.active=true;$('scanGo').textContent='Stop';const total=SCAN.queue.length;
+  const step=()=>{if(!SCAN.active)return;const n=SCAN.queue.shift();
+    if(!n){finishScan();return;}$('scanInfo').textContent=`Reading ${hex(n[0])} ${hex(n[1])} 00 … (${total-SCAN.queue.length}/${total})`;
+    send(rq1([n[0],n[1],0x00],[(SCAN.size>>14)&0x7F,(SCAN.size>>7)&0x7F,SCAN.size&0x7F]),true);SCAN.timer=setTimeout(step,+$('scanGap').value||180);};step();}
+function finishScan(){SCAN.active=false;clearTimeout(SCAN.timer);$('scanGo').textContent='Scan';
+  const keys=Object.keys(SCAN.found).sort();const rows=[];
+  const want=$('scanText').value.trim().toUpperCase();
+  for(const k of keys){const d=SCAN.found[k];let txt='',run='',hits=[];
+    d.forEach((b,ix)=>{if(b>=32&&b<127){run+=String.fromCharCode(b);}else{if(run.trim().length>=5)hits.push(run.trim());run='';}});if(run.trim().length>=5)hits.push(run.trim());
+    const mark=want&&hits.some(h=>h.toUpperCase().includes(want))?'  ◀ FOUND':'';
+    if(!d.some(b=>b)&&!$('scanZeros').checked)continue;
+    rows.push(`${k}  ${d.length} bytes  ${hits.slice(0,4).join(' | ')}${mark}`);}
+  $('scanOut').textContent=rows.length?rows.join('\n'):'No answers in that range.';
+  const found=rows.filter(r=>r.includes('FOUND')).length;
+  $('scanInfo').textContent=`Done: ${keys.length} areas answered, ${keys.filter(k=>SCAN.found[k].some(b=>b)).length} with data${found?`, ${found} FOUND`:''}.`;}
+function scanDownload(){const blob=new Blob([JSON.stringify(Object.fromEntries(Object.entries(SCAN.found).map(([k,v])=>[k,hx(v)])),null,1)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='vs880-memory-scan.json';a.click();}
+
+/* ================= mixer & routing ================= */
+const MIX={raw:{},thr:{},snapA:null,snapB:null};
+const MA={fader:0x000,master:0x018,status:0x020,pan:0x060,fx1mode:0x178,fx1lvl:0x190,fx1pan:0x1A8,fx2mode:0x1C0,fx2lvl:0x1D8,fx2pan:0x1F0,eqsw:0x078,lofreq:0x0D8,logain:0x0F0,midfreq:0x0C0,midgain:0x0C8,midq:0x0D0,hifreq:0x090,higain:0x0A8};
+const HIFREQ=[500,600,700,800,900,1000,1200,1400,1600,1800,2000,3000,4000,5000,6000,7000,8000,9000,10000,11000,12000,13000,14000,16000,18000];
+const MIDFREQ=[200,300,400,500,600,700,800,900,1000,1100,1200,1300,1400,1500,1600,1700,1800,1900,2000,3000,4000,5000,6000,7000,8000];
+const MIDQ=['0.5','1','2','4','8','16'];
+const EQPOS=[0,5,10,15,20,25,30,35,40,45,50,55,64,72,77,82,87,92,97,102,107,112,117,122,127]; // 25 steps, 64 = centre
+const LOFREQ=[40,50,60,70,80,90,100,120,140,160,180,200,300,400,500,600,700,800,900,1000,1100,1200,1300,1400,1500];
+const eqIdx=v=>{let b=0;EQPOS.forEach((p,k)=>{if(Math.abs(p-v)<Math.abs(EQPOS[b]-v))b=k;});return b;};
+const hzTxt=h=>h>=1000?(h/1000)+' kHz':h+' Hz';
+const SEND_MODES=['Off','Pre-fade','Post-fade','Insert','Insert L','Insert R','Insert S'];
+const STATUS={0:'Source',1:'Play',2:'Rec',0x40:'Mute'};
+let mixTimer=null;
+function mixRead(){for(let k=0;k<6;k++)setTimeout(()=>send(rq1([0x02,k,0x00],[0x00,0x01,0x00]),true),k*160);}
+function mixStore(a,data){data.forEach((b,k)=>{MIX.raw[a[1]*128+a[2]+k]=b;});clearTimeout(mixTimer);mixTimer=setTimeout(updateMix,60);}
+function mixSet(lin,v){MIX.raw[lin]=v;S.lastLocal=performance.now();const t=MIX.thr[lin]||(MIX.thr[lin]={last:0,timer:null});const go=()=>{t.last=performance.now();send(dt1([0x02,lin>>7,lin&0x7F],[MIX.raw[lin]&0x7F]),true);};
+  const now=performance.now();if(now-t.last>=25)go();else{clearTimeout(t.timer);t.timer=setTimeout(go,25);}updateMix();}
+const panTxt=v=>v===undefined?'—':v===64?'C':(v<64?'L':'R')+Math.abs(v-64);
+function insertOwner(fx){const base=fx?MA.fx2mode:MA.fx1mode;for(let c=0;c<8;c++)if((MIX.raw[base+ix(c)]??0)>=3)return c;return -1;}
+/* ---- mini knob for the mixer strips ---- */
+function mini(def){
+  const el=document.createElement('div');el.className='mk';el.title=def.title||def.label;
+  el.innerHTML=`<svg viewBox="0 0 30 30"><circle cx="15" cy="15" r="11" fill="none" stroke="#3a3f46" stroke-width="3" stroke-dasharray="51.8 69.1" transform="rotate(135 15 15)"/>
+    <circle class="a" cx="15" cy="15" r="11" fill="none" stroke="var(--acc)" stroke-width="3" stroke-dasharray="0 69.1" transform="rotate(135 15 15)"/>
+    <circle cx="15" cy="15" r="7" fill="#2f3339"/><line class="p" x1="15" y1="15" x2="15" y2="7" stroke="var(--ink)" stroke-width="2" stroke-linecap="round"/></svg>
+    <div class="mkv">—</div><div class="mkl">${def.label}</div>`;
+  el._v=null;
+  el._show=v=>{el._v=v;const t=clamp((v-def.min)/(def.max-def.min||1),0,1);
+    el.querySelector('.a').setAttribute('stroke-dasharray',`${(51.8*t).toFixed(1)} 69.1`);
+    el.querySelector('.p').setAttribute('transform',`rotate(${-135+270*t} 15 15)`);el.querySelector('.mkv').textContent=def.fmt(v);};
+  const set=v=>{v=clamp(Math.round(v),def.min,def.max);if(v===el._v)return;el._show(v);def.set(v);};
+  const svg=el.querySelector('svg');let y0=0,v0=0;
+  svg.addEventListener('pointerdown',e=>{if(el.classList.contains('off'))return;el._drag=true;y0=e.clientY;v0=el._v??def.dflt??def.min;svg.setPointerCapture(e.pointerId);});
+  svg.addEventListener('pointermove',e=>{if(!el._drag)return;set(v0+(y0-e.clientY)*(def.max-def.min)/(e.shiftKey?400:120));});
+  svg.addEventListener('pointerup',()=>el._drag=false);
+  svg.addEventListener('wheel',e=>{if(el.classList.contains('off'))return;e.preventDefault();set((el._v??def.dflt??def.min)+(e.deltaY<0?1:-1));},{passive:false});
+  svg.addEventListener('dblclick',()=>{if(def.dflt!==undefined&&!el.classList.contains('off'))set(def.dflt);});
+  return el;}
+const dbTxt=k=>{const d=k-12;return(d>0?'+':'')+d+' dB';};
+function stripDefs(c){
+  const eqG=(addr,label)=>({label,min:0,max:24,dflt:12,addr,toRaw:k=>EQPOS[k],fromRaw:eqIdx,fmt:dbTxt,title:label+' gain (double-click = 0 dB)'});
+  const eqF=(addr,label,list)=>({label,min:0,max:24,dflt:12,addr,toRaw:k=>EQPOS[k],fromRaw:eqIdx,fmt:k=>hzTxt(list[k]),title:label});
+  const lvl=(addr,label)=>({label,min:0,max:127,addr,toRaw:v=>v,fromRaw:v=>v,fmt:v=>String(v),title:label+' send level'});
+  const pan=(addr,label)=>({label,min:1,max:127,dflt:64,addr,toRaw:v=>v,fromRaw:v=>v,fmt:panTxt,title:label+' (double-click = centre)'});
+  return{
+    s1:lvl(()=>MA.fx1lvl+ix(c),'FX1'),s1p:pan(()=>MA.fx1pan+ix(c),'Pan'),
+    s2:lvl(()=>MA.fx2lvl+ix(c),'FX2'),s2p:pan(()=>MA.fx2pan+ix(c),'Pan'),
+    hg:eqG(()=>MA.higain+ix(c),'High'),hf:eqF(()=>MA.hifreq+ix(c),'High f',HIFREQ),
+    mg:{...eqG(()=>MA.midgain+c,'Mid'),mid:1},mf:{...eqF(()=>MA.midfreq+c,'Mid f',MIDFREQ),mid:1},
+    lg:eqG(()=>MA.logain+ix(c),'Low'),lf:eqF(()=>MA.lofreq+ix(c),'Low f',LOFREQ),
+    pn:pan(()=>MA.pan+ix(c),'Pan')};}
+function buildStrips(){
+  const box=$('strips');box.innerHTML='';
+  for(let c=0;c<8;c++){const s=document.createElement('div');s.className='strip';
+    s.innerHTML=`<h4>CH ${c+1}</h4><select class="st" title="Track status"></select>
+      <span class="lbl">FX1 send</span><select class="m1"></select><div class="kr" data-k="s1 s1p"></div>
+      <span class="lbl">FX2 send</span><select class="m2"></select><div class="kr" data-k="s2 s2p"></div>
+      <span class="lbl">EQ <button class="small eqb">Off</button></span>
+      <div class="kr" data-k="hg hf"></div><div class="kr" data-k="mg mf"></div><select class="mq" title="Mid Q"></select><div class="kr" data-k="lg lf"></div>
+      <div class="kr" data-k="pn"></div>
+      <input type="range" class="fader fd" min="0" max="127"><div class="v fv"></div>`;
+    const defs=stripDefs(c);s._defs=defs;s._k={};
+    s.querySelectorAll('.kr').forEach(row=>row.dataset.k.split(' ').forEach(k=>{const d=defs[k];d.set=v=>mixSet(d.addr(),d.toRaw(v));const el=mini(d);s._k[k]=el;row.appendChild(el);}));
+    const st=s.querySelector('.st');for(const k in STATUS)st.add(new Option(STATUS[k],k));st.onchange=()=>mixSet(MA.status+ix(c),+st.value);
+    for(const cls of['m1','m2']){const sel=s.querySelector('.'+cls);SEND_MODES.forEach((n,k)=>sel.add(new Option(n,k)));sel.add(new Option('-------','x'));}
+    s.querySelector('.eqb').onclick=()=>mixSet(MA.eqsw+ix(c),MIX.raw[MA.eqsw+ix(c)]?0:1);
+    const mq=s.querySelector('.mq');MIDQ.forEach((q,k)=>mq.add(new Option('Mid Q '+q,k)));mq.onchange=()=>mixSet(MA.midq+c,+mq.value*21);
+    s.querySelector('.fd').oninput=e=>mixSet(MA.fader+ix(c),+e.target.value);
+    [['m1',0],['m2',1]].forEach(([cls,fx])=>{const sel=s.querySelector('.'+cls);sel.onchange=()=>{const v=+sel.value,own=insertOwner(fx);
+      if(v>=3&&own>=0&&own!==c){$('mixNote').textContent=`FX${fx+1} is already inserted on channel ${own+1}. An inserted effect can only serve one channel.`;updateMix();return;}
+      $('mixNote').textContent='';mixSet((fx?MA.fx2mode:MA.fx1mode)+ix(c),v);};});
+    box.appendChild(s);}
+  const m=document.createElement('div');m.className='strip master';
+  m.innerHTML=`<h4>MASTER</h4><div class="kr" data-k="ax"></div><div style="flex:1"></div><input type="range" class="fader fd" min="0" max="127"><div class="v fv"></div>`;
+  const axd={label:'AUX',min:0,max:127,fmt:v=>String(v),title:'AUX master',set:v=>mixSet(0x01A,v)};m._ax=mini(axd);m.querySelector('.kr').appendChild(m._ax);
+  m.querySelector('.fd').oninput=e=>mixSet(MA.master,+e.target.value);box.appendChild(m);
+}
+const chOff=()=>(mixModeVal()||0)*8; // each mixer mode keeps its own 8 channels in rows of 24
+const ix=c=>c+chOff();
+function mixModeVal(){const a=MIX.raw[0x01C],b=MIX.raw[0x01D];if(a===undefined)return null;return a?(b?2:1):0;}
+$('mixMode').onchange=e=>{const v=+e.target.value;mixSet(0x01C,v?1:0);if(v)setTimeout(()=>mixSet(0x01D,v===2?1:0),60);};
+function updateMix(){
+  updateVtracks();
+  {const m=mixModeVal();if(m!==null&&$('mixMode')!==document.activeElement)$('mixMode').value=String(m);}
+  const strips=[...document.querySelectorAll('#strips .strip')];if(!strips.length)return;
+  const own=[insertOwner(0),insertOwner(1)],mode=mixModeVal()||0,pre=['CH','IN','TR'][mode],R=MIX.raw,act=document.activeElement;
+  strips.slice(0,8).forEach((s,c)=>{s.querySelector('h4').textContent=`${pre} ${c+1}`;
+    for(const k in s._k){const d=s._defs[k],el=s._k[k];el.classList.toggle('off',!!d.mid&&mode!==0);if(d.mid&&mode!==0)el.title='Mid EQ for this mixer mode is not mapped yet';
+      const raw=R[d.addr()];if(raw!==undefined&&!el._drag)el._show(d.fromRaw(raw));}
+    const mq=s.querySelector('.mq');mq.disabled=mode!==0;if(R[MA.midq+c]!==undefined&&mq!==act)mq.value=String(Math.min(5,Math.round(R[MA.midq+c]/21)));
+    const fd=s.querySelector('.fd');if(R[MA.fader+ix(c)]!==undefined&&fd!==act)fd.value=R[MA.fader+ix(c)];s.querySelector('.fv').textContent=R[MA.fader+ix(c)]??'—';
+    const eqOn=R[MA.eqsw+ix(c)],eb=s.querySelector('.eqb');eb.textContent=eqOn?'On':'Off';eb.classList.toggle('on',!!eqOn);
+    const st=s.querySelector('.st'),sv=R[MA.status+ix(c)];if(sv!==undefined){if(![...st.options].some(o=>+o.value===sv))st.add(new Option('? '+hex(sv),sv));if(st!==act)st.value=sv;}
+    st.className='st'+(sv!==undefined?` status-${sv}`:'');
+    [['.m1',MA.fx1mode,0],['.m2',MA.fx2mode,1]].forEach(([cls,base,fx])=>{const sel=s.querySelector(cls),v=R[base+ix(c)];
+      const blocked=own[fx]>=0&&own[fx]!==c;sel.disabled=blocked;if(sel===act)return;sel.value=blocked?'x':(v===undefined?'0':String(v));});});
+  const m=strips[8];if(m){const v=R[MA.master];const fd=m.querySelector('.fd');if(v!==undefined&&fd!==act)fd.value=v;m.querySelector('.fv').textContent=v??'—';
+    if(R[0x01A]!==undefined&&!m._ax._drag)m._ax._show(R[0x01A]);}
+}
+$('mixRead').onclick=mixRead;
+
+/* ================= under the hood ================= */
+const HOOD={raw:{0:{},1:{}}};
+function hoodStore(a,data){data.forEach((b,k)=>{HOOD.raw[a[0]][a[1]*128+a[2]+k]=b;});clearTimeout(HOOD.t);HOOD.t=setTimeout(renderHood,150);}
+$('songRename').onclick=()=>{const n=($('songName').value||'').padEnd(12,' ').slice(0,12);if(!n.trim())return;
+  const b=[...n].map(c=>{const k=c.charCodeAt(0);return k>=32&&k<127?k:32;});send(dt1([0x01,0x00,0x06],b));
+  setTimeout(()=>$('hoodRead').click(),400);};
+$('songProt').onchange=e=>{send(dt1([0x01,0x00,0x14],[e.target.checked?1:0]));setTimeout(()=>$('hoodRead').click(),400);};
+$('tempoSet').onclick=()=>{const t=Math.round(clamp(+$('tempo').value||120,25,250)*10);send(dt1([0,0,0x30],enc(t)));HOOD.raw[0][0x30]=enc(t)[0];HOOD.raw[0][0x31]=enc(t)[1];};
+$('tempo').onkeydown=e=>{if(e.key==='Enter')$('tempoSet').click();};
+$('mtcType').onchange=e=>{send(dt1([0,0,0x20],[+e.target.value]));HOOD.raw[0][0x20]=+e.target.value;};
+function buildVtracks(){const box=$('vtracks');box.innerHTML='<span class="lbl" style="color:var(--dim);font-size:12px">V-tracks</span>';
+  for(let t=0;t<8;t++){const l=document.createElement('label');l.innerHTML=`Tr ${t+1} <select data-t="${t}">${[1,2,3,4,5,6,7,8].map(v=>`<option value="${v-1}">V${v}</option>`).join('')}</select>`;
+    l.querySelector('select').onchange=e=>mixSet(0x048+t,+e.target.value);box.appendChild(l);}}
+function updateVtracks(){document.querySelectorAll('#vtracks select').forEach(sel=>{const v=MIX.raw[0x048+(+sel.dataset.t)];if(v!==undefined&&sel!==document.activeElement)sel.value=String(v);});}
+$('hoodRead').onclick=()=>{send(rq1([0,0,0],[0,1,0]),true);setTimeout(mixRead,900);for(let k=0;k<4;k++)setTimeout(()=>send(rq1([1,k,0],[0,1,0]),true),180*(k+1));$('hoodInfo').textContent='Reading…';};
+function renderHood(){
+  const s0=HOOD.raw[0],s1=HOOD.raw[1];const out=[];
+  if(s0[0x30]!==undefined&&$('tempo')!==document.activeElement)$('tempo').value=(dec(s0[0x30],s0[0x31])/10).toFixed(1);
+  if(s0[0x20]!==undefined&&$('mtcType')!==document.activeElement)$('mtcType').value=String(s0[0x20]);
+  const n=Object.keys(s1).length;const b=[];for(let i=0;i<n;i++)b.push(s1[i]??0);
+  const songs=[];for(let i=3;i<b.length-12;i++){const seg=b.slice(i,i+12);if(b[i-2]===0&&seg.every(c=>c>=32&&c<127)&&seg.some(c=>c!==32)){{const first=!songs.length,r=b[i+12]??0;songs.push({num:b[i-1],code:b[i-3],name:String.fromCharCode(...seg),rate:r&0x3F,mode:b[i+13],prot:first?!!b[i+14]:!!(r&0x40)});}i+=11;}}
+  const RATE={0:'48 kHz',1:'44.1 kHz',2:'32 kHz'},MODE={0:'MT1',1:'MT2',2:'LIVE',3:'MAS'};
+  const info=x=>`${RATE[x.rate]??'? '+x.rate} · ${MODE[x.mode]??'? '+x.mode}${x.prot?' · 🔒 protected':''}`;
+  if(songs.length){const cur=songs[0];if($('songName')!==document.activeElement)$('songName').value=cur.name.trimEnd();$('songProt').checked=cur.prot;out.push(`<p><b>Current song:</b> ${cur.num+1} · ${cur.name.trimEnd()} <span class="unk">(${info(cur)})</span></p>`);
+    out.push('<table><tr><th>#</th><th>Song</th><th>Sample rate · mode</th></tr>'+songs.slice(1).map(s=>`<tr class="${s.num===cur.num?'cur':''}"><td>${s.num+1}</td><td>${s.name.replace(/</g,'&lt;')}</td><td>${info(s)}</td></tr>`).join('')+'</table>');}
+  $('hoodOut').innerHTML=out.join('')||'<p class="note">Nothing came back — is the VS-880 on its main screen?</p>';
+  $('hoodInfo').textContent=songs.length?`${songs.length-1} songs on disk`:'';}
+
+/* ================= memory compare (lab): song/system (00, 01) + mixer (02) ================= */
+function readAllAreas(){send(rq1([0,0,0],[0,1,0]),true);for(let k=0;k<4;k++)setTimeout(()=>send(rq1([1,k,0],[0,1,0]),true),150*(k+1));setTimeout(mixRead,800);}
+function allSnap(){const o={};for(const a of[0,1])for(const k in HOOD.raw[a])o[`${a}:${k}`]=HOOD.raw[a][k];for(const k in MIX.raw)o[`2:${k}`]=MIX.raw[k];return o;}
+function mixSnap(which){readAllAreas();$('mixDiffInfo').textContent='Reading…';setTimeout(()=>{MIX['snap'+which]=allSnap();$('mixDiffInfo').textContent=`Snapshot ${which} taken (${Object.keys(MIX['snap'+which]).length} bytes).`;if(which==='B')mixDiff();},2200);}
+function mixDiff(){const A=MIX.snapA,B=MIX.snapB;if(!A||!B)return;const rows=[];
+  for(const k in B){if(A[k]!==B[k]){const[a,n]=k.split(':').map(Number);rows.push(`${hex(a)} ${hex(n>>7)} ${hex(n&0x7F)}   ${A[k]===undefined?'··':hex(A[k])} → ${hex(B[k])}   (${A[k]??'?'} → ${B[k]})${B[k]>=32&&B[k]<127?'  “'+String.fromCharCode(B[k])+'”':''}`);}}
+  $('mixDiff').textContent=rows.length?rows.join('\n'):'No differences.';}
+/* ================= lab ================= */
+$('labToggle').onchange=e=>{$('labBox').hidden=!e.target.checked;if(e.target.checked)$('labBox').open=true;};
+const hb=id=>parseInt($(id).value,16)&0x7F;
+$('lsend').onclick=()=>send(dt1([hb('la0'),hb('la1'),hb('la2')],enc(+$('lval').value)));
+$('lsend1').onclick=()=>send(dt1([hb('la0'),hb('la1'),hb('la2')],[(+$('lval').value)&0x7F]));
+$('lread').onclick=()=>{const s=parseInt($('lrs').value,16)||0x80;send(rq1([hb('lr0'),hb('lr1'),hb('lr2')],[(s>>14)&0x7F,(s>>7)&0x7F,s&0x7F]));};
+$('clearLog').onclick=()=>$('log').innerHTML='';
+function dumpText(){return S.fx.map((F,i)=>`FX${i+1} algo ${F.algo} "${F.name}"\n`+(F.raw.length?hx(F.raw.slice(0,0x80).map(b=>b??0)):'(not read)')).join('\n\n');}
+$('pcGo').onclick=()=>{const i=+$('pcFx').value,n=clamp(+$('pcNum').value,0,127);send([0xC0|i,n]);
+  S.fx[i].onRead=()=>{$('pcInfo').textContent=`PC ${n} on FX${i+1} → “${S.fx[i].name.trimEnd()}” (algorithm ${S.fx[i].algo})`;log(`PC test ${n} → ${S.fx[i].name}`);};
+  setTimeout(()=>readFx(i),450);};
+$('bankDl').onclick=()=>{const n=Object.keys(S.bankDumps).length;if(!n){log('Run “Read names” on a bank first','err');return;}
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S.bankDumps,null,1)],{type:'application/json'}));a.download=`vs880-bank-dumps-${n}.json`;a.click();};
+$('scanGo').onclick=()=>SCAN.active?finishScan():startScan();
+$('scanDl').onclick=scanDownload;
+$('copyDumps').onclick=()=>navigator.clipboard.writeText(dumpText());
+$('exportMaps').onclick=()=>{const blob=new Blob([JSON.stringify({maps:S.maps,labels:S.labels},null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='vs880-fx-mappings.json';a.click();};
+function hexView(){const out=[];S.fx.forEach((F,i)=>{if(!F.raw.length)return;out.push(`FX${i+1}`);for(let r=0;r<0x80;r+=16)out.push(`04 0${i} ${hex(r)}  `+F.raw.slice(r,r+16).map(b=>b===undefined?'··':hex(b)).join(' '));});$('hexview').textContent=out.join('\n');}
+
+/* ================= go ================= */
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&S.learn){S.learn=null;document.querySelectorAll('.learning').forEach(x=>x.classList.remove('learning'));}});
+$('bankMode').value=S.bankMode;$('bankMode').onchange=e=>{S.bankMode=e.target.value;store.set('bankMode2',S.bankMode);};
+fxCard(0);fxCard(1);fillLib();buildStrips();buildVtracks();init();
+$('mixA').onclick=()=>mixSnap('A');$('mixB').onclick=()=>mixSnap('B');
+</script>
+</body>
+</html>
